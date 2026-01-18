@@ -1,0 +1,30 @@
+@startuml Scenario 2: Starting a Trip (Scan & Unlock)
+actor User
+participant "App Interface" as App
+participant "TripManager" as TripMgr
+participant "WalletSystem" as Wallet
+participant "Vehicle (IoT)" as Bike
+
+User -> App: Scan QR Code on Bike
+App -> TripMgr: validateStartRequest(userId, qrCode)
+activate TripMgr
+
+TripMgr -> Bike: getStatus()
+Bike --> TripMgr: Status: AVAILABLE, Battery: 80%
+
+TripMgr -> Wallet: checkMinimumBalance(userId)
+alt Balance > Min_Required
+    Wallet --> TripMgr: Approved
+    TripMgr -> Bike: commandUnlock()
+    Bike --> TripMgr: Unlocked
+    TripMgr -> TripMgr: createTripSession(startTime, startLoc)
+    TripMgr --> App: Trip Started
+    App --> User: Show Timer & Speedometer
+else Balance Low
+    Wallet --> TripMgr: Denied
+    TripMgr --> App: Error "Insufficient Funds"
+    App --> User: Prompt "Please Add Money"
+    App -> User: Suggest "Add Money via UPI or Credit Card"
+end
+deactivate TripMgr
+@enduml

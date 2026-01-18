@@ -1,0 +1,142 @@
+@startuml Class_Diagram
+
+'--- Styles ---
+skinparam classAttributeIconSize 0
+skinparam monochrome true
+skinparam linetype ortho
+
+'--- Enums (Kept only for simple states as per standard practice) ---
+enum VehicleStatus {
+    AVAILABLE
+    IN_USE
+    MAINTENANCE
+}
+
+'--- Classes ---
+
+abstract class User {
+    - userId: String
+    - name: String
+    - phoneNumber: String
+    - idProofUrl: String
+    + register(): bool
+    + login(): bool
+    + scanQR(code: String): void
+    + viewHistory(): List<Trip>
+}
+
+class Student extends User {
+    - rollNumber: String
+    + getFeeAccountDetails(): String
+}
+
+class Staff extends User {
+    - employeeId: String
+    + getSalaryAccountDetails(): String
+}
+
+class Wallet {
+    - balance: double
+    - autoDeductEnabled: bool
+    + addMoney(amount: double, method: PaymentMethod): bool
+    + deductMoney(amount: double): bool
+    + checkBalance(): double
+}
+
+'--- Payment Strategy Pattern ---
+abstract class PaymentMethod {
+    + processPayment(amount: double): bool
+}
+
+class UPIPayment extends PaymentMethod {
+    - upiId: String
+    + processPayment(amount: double): bool
+}
+
+class SalaryDeduction extends PaymentMethod {
+    - employeeId: String
+    + processPayment(amount: double): bool
+}
+
+class FeeAddition extends PaymentMethod {
+    - studentRollNo: String
+    + processPayment(amount: double): bool
+}
+
+'--- Vehicle Hierarchy ---
+abstract class Vehicle {
+    - vehicleId: String
+    - qrCode: String
+    - batteryLevel: int
+    - gpsLocation: Coordinates
+    - status: VehicleStatus
+    + unlock(): void
+    + lock(): void
+    + updateStatus(status: VehicleStatus): void
+}
+
+class Bicycle extends Vehicle {
+    - gearCount: int
+}
+
+class Moped extends Vehicle {
+    - fuelLevel: int
+}
+
+class SmartBike extends Vehicle {
+    - electricRange: int
+}
+
+class ParkingLot {
+    - lotId: String
+    - capacity: int
+    - currentCount: int
+    + isBikeInside(gps: Coordinates): bool
+    + updateAvailability(): void
+}
+
+class Trip {
+    - tripId: String
+    - startTime: DateTime
+    - endTime: DateTime
+    - distanceCovered: double
+    - totalFare: double
+    + startTrip(): void
+    + endTrip(): void
+}
+
+class RateCard {
+    - baseRate: double
+    - ratePer100m: double
+    - dailyFine: double
+    + calculateFare(distance: double, duration: Time): double
+}
+
+class Transaction {
+    - transactionId: String
+    - amount: double
+    - timestamp: DateTime
+}
+
+class Feedback {
+    - rating: int
+    - comment: String
+}
+
+'--- Relationships ---
+
+User "1" *-- "1" Wallet : owns >
+Wallet ..> PaymentMethod : uses >
+User "1" -- "0..*" Trip : takes >
+Trip "0..*" -- "1" Vehicle : uses >
+Trip "1" *-- "1" Transaction : generates >
+Trip "1" *-- "0..1" Feedback : receives >
+Vehicle "0..*" -- "1" ParkingLot : docked at >
+ParkingLot "1" o-- "0..*" Vehicle : aggregates >
+Trip ..> RateCard : uses pricing logic
+
+'--- Specific Payment Associations ---
+Staff ..> SalaryDeduction : authorized for >
+Student ..> FeeAddition : authorized for >
+
+@enduml

@@ -1,0 +1,27 @@
+@startuml Scenario 1: User Adding Money to Wallet (Using UPI)
+actor User
+participant "App Interface" as App
+participant "Wallet" as Wallet
+participant "UPIPayment" as UPI
+participant "ExternalBank" as Bank
+
+User -> App: Select "Add Money" (500 INR)
+App -> User: Prompt for Payment Method
+User -> App: Select UPI
+App -> UPI: create(upiId)
+activate UPI
+
+App -> Wallet: addMoney(500, upiPaymentInstance)
+activate Wallet
+
+Wallet -> UPI: processPayment(500)
+UPI -> Bank: requestTransfer(500)
+Bank --> UPI: Success
+UPI --> Wallet: True (Success)
+deactivate UPI
+
+Wallet -> Wallet: balance += 500
+Wallet --> App: Updated Balance
+deactivate Wallet
+App --> User: Show "Success"
+@enduml

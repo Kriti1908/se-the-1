@@ -1,0 +1,46 @@
+@startuml Scenario 3: Ending a Trip & Auto-Payment
+actor User
+participant "App Interface" as App
+participant "ParkingSystem" as Park
+participant "TripManager" as TripMgr
+participant "RateCard" as Rates
+participant "WalletSystem" as Wallet
+
+User -> App: Click "End Trip"
+App -> Park: validateLocation(gpsCoords)
+activate Park
+
+alt Inside Parking Geofence
+    Park --> App: Location Valid
+    App -> TripMgr: endTrip(tripId)
+    activate TripMgr
+    
+    TripMgr -> TripMgr: stopTimer()
+    TripMgr -> Rates: computeFare(distance, duration)
+    activate Rates
+    Rates -> Rates: Check > 8 hours (Fine Logic)
+    Rates --> TripMgr: Total Fare: 45 INR
+    deactivate Rates
+
+    TripMgr -> Wallet: processPayment(45, AutoDeduct=True)
+    activate Wallet
+    
+    alt Sufficient Balance
+        Wallet -> Wallet: deduct(45)
+        Wallet --> TripMgr: Payment Successful
+        TripMgr -> Bike: commandLock()
+        TripMgr --> App: Trip Ended. Receipt Generated.
+        App --> User: Show Receipt & Rating Request
+    else Insufficient Balance
+        Wallet --> TripMgr: Payment Failed
+        TripMgr --> App: Redirect to Payment Gateway
+    end
+    deactivate Wallet
+    deactivate TripMgr
+
+else Outside Parking Zone
+    Park --> App: Location Invalid
+    App --> User: Error "Please park in designated zone"
+end
+deactivate Park
+@enduml

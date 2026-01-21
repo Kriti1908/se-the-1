@@ -68,19 +68,19 @@ The following table contrasts the architectural choices made in the **Manual Des
 ### 2. IIIT-H Specific Constraint Analysis
 
 * **Constraint: "Users (staff, student, teacher)"**
-* **LLM Performance:** **High.** The LLM correctly identified the three user types and created specific classes for them.
+  * **LLM Performance:** **High.** The LLM correctly identified the three user types and created specific classes for them.
 
 
 * **Constraint: "Deduct from salary/fees"**
-* **LLM Performance:** **High.** The LLM correctly implemented `SalaryDeduction` and `FeeAddition` classes inheriting from `PaymentMethod`.
+  * **LLM Performance:** **High.** The LLM correctly implemented `SalaryDeduction` and `FeeAddition` classes inheriting from `PaymentMethod`.
 
 
 * **Constraint: "Bike, bicycle or moped"**
-* **LLM Performance:** **Low.** The LLM ignored the variety of vehicles, implementing only a generic `SmartBike` class. This misses potential attributes like `fuelLevel` for mopeds vs `battery` for e-bikes.
+  * **LLM Performance:** **Low.** The LLM ignored the variety of vehicles, implementing only a generic `SmartBike` class. This misses potential attributes like `fuelLevel` for mopeds vs `battery` for e-bikes.
 
 
 * **Constraint: "Designated parking lots"**
-* **LLM Performance:** **Medium.** The LLM introduced `DockingStation`, implying a strict physical lock mechanism, whereas the problem description allowed for a broader interpretation of "parking lot" which is often solved via geofencing in modern apps.
+  * **LLM Performance:** **Medium.** The LLM introduced `DockingStation`, implying a strict physical lock mechanism, whereas the problem description allowed for a broader interpretation of "parking lot" which is often solved via geofencing in modern apps.
 
 
 

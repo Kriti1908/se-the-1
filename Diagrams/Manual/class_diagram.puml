@@ -1,11 +1,10 @@
-@startuml Class_Diagram
-
+@startuml Class_Diagram_Updated
 '--- Styles ---
 skinparam classAttributeIconSize 0
 skinparam monochrome true
 skinparam linetype ortho
 
-'--- Enums (Kept only for simple states as per standard practice) ---
+'--- Enums ---
 enum VehicleStatus {
     AVAILABLE
     IN_USE
@@ -23,6 +22,7 @@ abstract class User {
     + login(): bool
     + scanQR(code: String): void
     + viewHistory(): List<Trip>
+    + initiateWalletRecharge(): void
 }
 
 class Student extends User {
@@ -41,6 +41,7 @@ class Wallet {
     + addMoney(amount: double, method: PaymentMethod): bool
     + deductMoney(amount: double): bool
     + checkBalance(): double
+    + updateBalance(): void
 }
 
 '--- Payment Strategy Pattern ---
@@ -51,16 +52,22 @@ abstract class PaymentMethod {
 class UPIPayment extends PaymentMethod {
     - upiId: String
     + processPayment(amount: double): bool
+    + initiateTransaction(): void
+    + verifyWithBank(): bool
 }
 
 class SalaryDeduction extends PaymentMethod {
     - employeeId: String
     + processPayment(amount: double): bool
+    + verifyEmployeeAccount(): bool
+    + scheduleDeduction(): void
 }
 
 class FeeAddition extends PaymentMethod {
     - studentRollNo: String
     + processPayment(amount: double): bool
+    + verifyStudentAccount(): bool
+    + addToFeeStructure(): void
 }
 
 '--- Vehicle Hierarchy ---
@@ -73,6 +80,9 @@ abstract class Vehicle {
     + unlock(): void
     + lock(): void
     + updateStatus(status: VehicleStatus): void
+    + getStatus(): VehicleStatus
+    + getBatteryLevel(): int
+    + getGPSLocation(): Coordinates
 }
 
 class Bicycle extends Vehicle {
@@ -103,6 +113,8 @@ class Trip {
     - totalFare: double
     + startTrip(): void
     + endTrip(): void
+    + calculateDuration(): Time
+    + calculateDistance(): double
 }
 
 class RateCard {
@@ -110,12 +122,16 @@ class RateCard {
     - ratePer100m: double
     - dailyFine: double
     + calculateFare(distance: double, duration: Time): double
+    + applyBaseRate(): double
+    + applyDistanceRate(): double
+    + checkDailyFine(): double
 }
 
 class Transaction {
     - transactionId: String
     - amount: double
     - timestamp: DateTime
+    - type: String
 }
 
 class Feedback {
@@ -123,17 +139,36 @@ class Feedback {
     - comment: String
 }
 
+'--- Controller/Manager Class ---
+class BikeRentalController {
+    + initiateTrip(userId: String, qrCode: String): Trip
+    + completeTrip(tripId: String): Transaction
+    + processWalletRecharge(userId: String, amount: double, method: PaymentMethod): bool
+}
+
 '--- Relationships ---
 
 User "1" *-- "1" Wallet : owns >
-Wallet ..> PaymentMethod : uses >
 User "1" -- "0..*" Trip : takes >
+User "1" -- "0..*" Vehicle : interacts with >
+
+Wallet "1" -- "0..*" Transaction : records >
+
 Trip "0..*" -- "1" Vehicle : uses >
-Trip "1" *-- "1" Transaction : generates >
+Trip "1" -- "1" Transaction : generates >
 Trip "1" *-- "0..1" Feedback : receives >
+Trip ..> RateCard : uses pricing logic >
+
+Transaction "1" -- "1" PaymentMethod : processed via >
+
 Vehicle "0..*" -- "1" ParkingLot : docked at >
 ParkingLot "1" o-- "0..*" Vehicle : aggregates >
-Trip ..> RateCard : uses pricing logic
+
+'--- Controller Relationships ---
+BikeRentalController ..> User : manages >
+BikeRentalController ..> Trip : creates/manages >
+BikeRentalController ..> Wallet : accesses >
+BikeRentalController ..> Vehicle : controls >
 
 '--- Specific Payment Associations ---
 Staff ..> SalaryDeduction : authorized for >

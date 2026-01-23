@@ -4,84 +4,143 @@
 
 ### **Classes**
 
-* **User (Abstract):** The base class for all actors (Students, Staff) containing shared attributes like ID proof and methods for login and scanning QR codes.
-* **Student:** Subclass of User that includes `rollNumber` and logic to authorize `FeeAddition` payments.
-* **Staff:** Subclass of User that includes `employeeId` and logic to authorize `SalaryDeduction` payments.
-* **Wallet:** Handles the user's balance and `autoDeduct` functionality, acting as the client that utilizes various `PaymentMethod` strategies.
-* **PaymentMethod (Abstract):** Defines the contract `processPayment` that all concrete payment types (UPI, Salary, Fee) must implement.
-* **UPIPayment:** A concrete payment method that integrates with external UPI interfaces to transfer funds to the Wallet.
-* **SalaryDeduction:** A concrete payment method exclusive to Staff that communicates with the payroll system.
-* **FeeAddition:** A concrete payment method exclusive to Students that adds charges to their semester fee account.
-* **Vehicle (Abstract):** The base hardware class containing shared state (GPS, battery) and control methods (lock/unlock) for all vehicle types.
-* **Bicycle / Moped / SmartBike:** Concrete subclasses of Vehicle representing specific hardware types with unique attributes like `gearCount` or `fuelLevel`.
-* **ParkingLot:** Manages the physical or geofenced zones where vehicles can be legally parked and tracks current capacity.
-* **Trip:** Manages the lifecycle of a ride, linking a User to a specific Vehicle instance and calculating the final fare.
-* **RateCard:** Encapsulates the pricing rules (base rate, distance increments, fines) to decouple logic from the Trip class.
-* **Transaction:** A permanent record of any successful payment or wallet top-up for auditing purposes.
-* **Feedback:** Stores the rating and comments provided by a user after a trip concludes.
+* **User (Abstract):** The base class for all actors (Students, Staff) containing shared identity attributes like `userId`, `phoneNumber`, and `idProofUrl`. It defines core methods for `register()`, `login()`, and `viewHistory()`.
+
+
+* **Student:** A subclass of `User` that adds a unique `rollNumber`. It includes logic to `getFeeAccountDetails()` for transaction processing.
+
+
+* **Staff:** A subclass of `User` that includes an `employeeId`. It contains logic to `getSalaryAccountDetails()` to facilitate payroll deductions.
+
+
+* **Wallet:** Handles the user's `balance` and an `autoDeductEnabled` flag. It acts as the primary interface for `addMoney()` and `deductMoney()` operations.
+
+
+* **PaymentMethod (Abstract):** Defines the `processPayment()` contract that all concrete strategies must implement to decouple the Wallet from specific providers.
+
+
+* **UPIPayment:** A concrete strategy for external UPI transfers that handles `initiateTransaction()` and `verifyWithBank()` logic.
+
+
+* **SalaryDeduction:** A concrete strategy restricted to `Staff` that implements `verifyEmployeeAccount()` and `scheduleDeduction()` via the payroll system.
+
+
+* **FeeAddition:** A concrete strategy restricted to `Students` that handles `verifyStudentAccount()` and `addToFeeStructure()`.
+
+
+* **Vehicle (Abstract):** The base IoT hardware class tracking `batteryLevel`, `gpsLocation`, and `VehicleStatus`. It manages hardware states through `lock()`, `unlock()`, and `updateStatus()`.
+
+
+* **Bicycle / Moped / SmartBike:** Concrete subclasses representing hardware types with specific attributes such as `gearCount` (Bicycle), `fuelLevel` (Moped), or `electricRange` (SmartBike).
+
+
+* **ParkingLot:** Manages designated zones by tracking `capacity` and `currentCount`. It uses `isBikeInside()` to validate location via GPS coordinates.
+
+
+* **Trip:** Manages the ride lifecycle, storing `startTime`, `endTime`, `distanceCovered`, and `totalFare`. It coordinates with `RateCard` for fare computation.
+
+
+* **RateCard:** Encapsulates pricing rules, including `baseRate`, `ratePer100m`, and the `dailyFine` logic.
+
+
+* **Transaction:** A permanent audit record of financial events, including `amount`, `timestamp`, and `type` (e.g., recharge or trip payment).
+
+
+* **Feedback:** Stores the post-trip `rating` (int) and `comment` (String) provided by the user.
+
+
+* **BikeRentalController:** A manager class that orchestrates the system by initiating trips, completing transactions, and managing wallet recharges.
+
 
 ### **Inheritance**
 
-* **User Hierarchy:** `Student` and `Staff` inherit from `User` to share identity logic while enabling distinct payment privileges.
-* **Payment Hierarchy:** `UPIPayment`, `SalaryDeduction`, and `FeeAddition` inherit from `PaymentMethod` to implement specific processing logic (Polymorphism).
-* **Vehicle Hierarchy:** `Bicycle`, `Moped`, and `SmartBike` inherit from `Vehicle` to share core IoT functionality while allowing for hardware-specific attributes.
+* **User Hierarchy:** `Student` and `Staff` inherit from the abstract `User` class to share core authentication and profile logic.
+
+
+* **Payment Strategy:** `UPIPayment`, `SalaryDeduction`, and `FeeAddition` extend `PaymentMethod`, allowing for polymorphic processing of different payment types.
+
+
+* **Vehicle Hierarchy:** `Bicycle`, `Moped`, and `SmartBike` extend the base `Vehicle` class to support diverse hardware while maintaining a unified interface for the controller.
+
 
 ### **Relationships & Cardinalities**
 
-* **User — Wallet (1:1 Composition):** Each User has exactly one Wallet instance.
-* **Wallet — PaymentMethod (1:1 Dependency):** The Wallet uses a transient `PaymentMethod` instance whenever money is added.
-* **User — Trip (1:0..* Association):** A User can take multiple Trips.
-* **Trip — Vehicle (0..*:1 Association):** A Trip uses exactly one Vehicle.
-* **Vehicle — ParkingLot (0..*:1 Aggregation):** Vehicles are located at a ParkingLot but can exist independently (during a trip).
-* **Trip — Transaction (1:1 Composition):** Every Trip results in one Transaction.
-* **Trip — RateCard (Dependency):** Trip depends on RateCard for fare calculation.
+* **User — Wallet (1:1 Composition):** Each User owns exactly one Wallet instance for all financial activity.
+
+
+* **User — Trip (1:0..* Association):** A single User can take multiple Trips over time.
+
+
+* **Trip — Vehicle (0..*:1 Association):** Each individual Trip is linked to exactly one Vehicle instance.
+
+
+* **Vehicle — ParkingLot (0..*:1 Aggregation):** Vehicles are logically docked at a ParkingLot, which aggregates multiple vehicles.
+
+
+* **Trip — Transaction (1:1 Composition):** Every completed Trip generates exactly one Transaction record.
+
+
+* **Trip — Feedback (1:0..1 Composition):** A Trip can optionally receive one set of Feedback from the user.
+
+
+* **Transaction — PaymentMethod (1:1 Association):** Each transaction is processed via exactly one selected PaymentMethod strategy.
 
 ## Assumptions
 
-1. **Internet Connectivity:** All vehicles and user apps have persistent internet access to communicate with the central server.
-2. **GPS Accuracy:** The GPS modules on vehicles and phones are accurate enough to strictly enforce geofenced parking.
-3. **Payment API Integration:** The University's Payroll and Fee systems provide accessible APIs for the `SalaryDeduction` and `FeeAddition` classes.
-4. **Hardware Standardization:** All vehicle subclasses (Moped, Bicycle) share the same locking/unlocking IoT protocol despite physical differences.
+1. **Persistent Connectivity:** All vehicles and user mobile applications maintain continuous internet access to sync status and GPS data.
+
+
+2. **GPS Precision:** Phone and vehicle GPS sensors are accurate enough to validate geofenced parking within `ParkingLot` boundaries.
+
+
+3. **Third-Party API Availability:** University payroll and fee management systems provide stable APIs for the `SalaryDeduction` and `FeeAddition` classes.
+
+
+4. **Hardware Protocols:** Different vehicle types (Bicycle, Moped) utilize a standardized IoT protocol for remote locking and unlocking.
+
+
 
 ## Additional Features
 
-1. **Payment Strategy Pattern:** Implemented a flexible Strategy Pattern for payments, allowing easy addition of new payment methods (e.g., Credit Card) without modifying the Wallet class.
-2. **Vehicle Polymorphism:** Designed a Vehicle hierarchy to easily support future vehicle types (e.g., Electric Scooters) by extending the abstract base class.
-3. **Geofenced Parking:** Implemented virtual docking stations using GPS coordinates in the `ParkingLot` class to reduce infrastructure costs.
+1. **Payment Strategy Pattern:** Implemented a flexible Strategy Pattern for payments, allowing new methods (like Credit Cards) to be added without modifying the `Wallet` class.
+
+
+2. **Pre-Trip Resource Validation:** The system checks both the vehicle's `batteryLevel` and the user's `minimumRequired` wallet balance before allowing a trip to start.
+
+
+3. **Geofenced Location Validation:** The `ParkingLot` class uses `isBikeInside()` to strictly enforce that trips only end within designated zones via GPS validation.
+
+
+4. **Centralized Control Hub:** Included a `BikeRentalController` to manage complex interactions between users, hardware, and financial records.
 
 
 ## Phase III: Comparative Analysis (Human vs. LLM Review)
 
 ### 1. Structural Comparison (Manual vs. LLM)
 
-The following table contrasts the architectural choices made in the **Manual Design (Phase I)** against the **LLM-generated Design (Phase II)**.
-
 | Feature | Manual Design (Phase I) | LLM Design (Phase II) | Analysis |
-| --- | --- | --- | --- |
-| **Vehicle Hierarchy** | **Polymorphic:** Abstract `Vehicle` class with subclasses `Bicycle`, `Moped`, `SmartBike`. | **Singular:** Single `SmartBike` class. | **Correction Needed:** The LLM failed to capture the requirement for multiple vehicle types ("bike, bicycle or moped"). The manual design correctly allows for different behaviors (fuel vs. battery) per vehicle type. |
-| **Parking Logic** | **Geofenced:** `ParkingLot` class checks GPS coordinates (Virtual Docking). | **Hardware-based:** `ParkingLot` aggregates `DockingStation` objects. | **Critique:** The LLM assumed a physical docking station model. While valid, the Manual design's geofencing approach is more scalable for a campus setting and reduces infrastructure constraints. |
-| **User Hierarchy** | **Simplified:** `Student` and `Staff`. | **Granular:** `Student`, `Staff`, and `Faculty`. | **Alignment:** Both designs correctly capture the need to separate users. The LLM added `Faculty` explicitly, which aligns with the "teacher" requirement, whereas the Manual design grouped teachers under `Staff`. |
-| **Payment & Wallet** | **Strategy Pattern:** `Wallet` injects `PaymentMethod` dependencies directly. | **Relational:** `Wallet` links to `Payment` records, which link to `PaymentMethod`. | **Alignment:** Both designs correctly identified the specific IIIT-H payment constraints (`SalaryDeduction`, `FeeAddition`). The LLM's separation of a `Payment` transaction record from the method is a good database normalization practice. |
-| **Pricing Logic** | **Unified:** Single `RateCard` class handling base rates and fines. | **Decoupled:** Separate `PricingPolicy` and `FinePolicy` classes. | **Critique:** The LLM's approach to separate Pricing and Fines is cleaner and adheres better to the Single Responsibility Principle, allowing fines to evolve independently of ride rates. |
-| **Support System** | **Implicit:** Handled via `Feedback` class. | **Explicit:** Dedicated `SupportDocument` class linked to `User`. | **Alignment:** The LLM correctly picked up on the requirement for "Support information... documentation," which the Manual design treated more abstractly. |
+| :--- | :--- | :--- | :--- |
+| **Vehicle Hierarchy** |**Polymorphic**: Defines `Bicycle`, `Moped`, and `SmartBike` as distinct subclasses with unique attributes like `gearCount` and `fuelLevel`[cite: 100]. | **Singular**: Only implemented a single `SmartBike` class. | The LLM failed to support the requirement for multiple vehicle types (bike, bicycle, or moped). |
+| **Payment Logic** |**Advanced Strategies**: Includes specific methods like `verifyWithBank()` [cite: 99] [cite_start]and `scheduleDeduction()` [cite: 106] within the strategy pattern. | **Basic**: Uses a simple association between `Wallet` and `Payment` records. | The manual design correctly captures the IIIT-H specific workflows for Salary and Fees. |
+| **Parking System** |**Geofenced**: The `ParkingLot` validates presence using GPS coordinates via the `isBikeInside()` method[cite: 100, 114]. | **Hardware-based**: Relies on a `DockingStation` physical lock model. | Manual geofencing is more scalable for a campus setting and reduces infrastructure costs. |
+| **Pre-Ride Checks** |**Resource-Aware**: Explicitly validates both `batteryLevel` and `checkBalance()` before triggering the `unlock()` command[cite: 110, 111]. | **Transactional**: Assumed unlocking occurs immediately upon scanning without state validation. | The manual design prevents "stranded" trips by verifying resources before the trip starts. |
 
 ### 2. IIIT-H Specific Constraint Analysis
 
 * **Constraint: "Users (staff, student, teacher)"**
-  * **LLM Performance:** **High.** The LLM correctly identified the three user types and created specific classes for them.
+  * **LLM Performance:** **High.** The LLM correctly identified these types, though it added `Faculty` as a separate class while the Manual design grouped teachers under `Staff`.
 
 
 * **Constraint: "Deduct from salary/fees"**
-  * **LLM Performance:** **High.** The LLM correctly implemented `SalaryDeduction` and `FeeAddition` classes inheriting from `PaymentMethod`.
+  * **LLM Performance:** **High.** Both designs correctly implemented `SalaryDeduction` and `FeeAddition`.
 
 
 * **Constraint: "Bike, bicycle or moped"**
-  * **LLM Performance:** **Low.** The LLM ignored the variety of vehicles, implementing only a generic `SmartBike` class. This misses potential attributes like `fuelLevel` for mopeds vs `battery` for e-bikes.
+  * **LLM Performance:** **Low.** The LLM only provided a generic `SmartBike`, missing the specific attributes for human-powered or fuel-based vehicles.
 
 
 * **Constraint: "Designated parking lots"**
-  * **LLM Performance:** **Medium.** The LLM introduced `DockingStation`, implying a strict physical lock mechanism, whereas the problem description allowed for a broader interpretation of "parking lot" which is often solved via geofencing in modern apps.
-
+  * **LLM Performance:** **Medium.** The LLM assumed physical docks, whereas the manual design correctly interprets "parking lot" to include virtual zones via geofencing.
 
 
 ### 3. Specific Corrections Required for LLM Output

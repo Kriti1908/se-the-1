@@ -1,30 +1,68 @@
-@startuml Scenario 2: Starting a Trip (Scan & Unlock)
+@startuml Start_Trip_with_QR_Scan
+
 actor User
 participant "App Interface" as App
-participant "TripManager" as TripMgr
-participant "WalletSystem" as Wallet
-participant "Vehicle (IoT)" as Bike
+participant ":User" as UserObj
+participant ":Vehicle" as Bike
+participant ":Wallet" as WalletObj
+participant ":ParkingLot" as Parking
+participant ":Trip" as TripObj
 
-User -> App: Scan QR Code on Bike
-App -> TripMgr: validateStartRequest(userId, qrCode)
-activate TripMgr
+User -> App: scanQR(qrCode)
+activate App
 
-TripMgr -> Bike: getStatus()
-Bike --> TripMgr: Status: AVAILABLE, Battery: 80%
+App -> UserObj: scanQR(qrCode)
+activate UserObj
 
-TripMgr -> Wallet: checkMinimumBalance(userId)
-alt Balance > Min_Required
-    Wallet --> TripMgr: Approved
-    TripMgr -> Bike: commandUnlock()
-    Bike --> TripMgr: Unlocked
-    TripMgr -> TripMgr: createTripSession(startTime, startLoc)
-    TripMgr --> App: Trip Started
-    App --> User: Show Timer & Speedometer
-else Balance Low
-    Wallet --> TripMgr: Denied
-    TripMgr --> App: Error "Insufficient Funds"
-    App --> User: Prompt "Please Add Money"
-    App -> User: Suggest "Add Money via UPI or Credit Card"
+UserObj -> Bike: getStatus()
+activate Bike
+
+alt status == AVAILABLE
+    Bike --> UserObj: statusAvailable
+    
+    UserObj -> Bike: getBatteryLevel()
+    Bike --> UserObj: batteryLevel
+    
+    UserObj -> WalletObj: checkBalance()
+    activate WalletObj
+    
+    alt balance >= minimumRequired
+        WalletObj --> UserObj: sufficientBalance
+        deactivate WalletObj
+        
+        UserObj -> Bike: unlock()
+        Bike -> Bike: updateStatus(IN_USE)
+        Bike --> UserObj: unlocked
+        
+        UserObj -> TripObj: create(user, vehicle)
+        activate TripObj
+        
+        TripObj -> TripObj: startTrip()
+        TripObj -> Bike: getGPSLocation()
+        Bike --> TripObj: currentLocation
+        
+        TripObj --> UserObj: tripStarted
+        deactivate TripObj
+        
+        UserObj --> App: tripInitiated
+        App --> User: displayTripInterface()
+        
+    else balance < minimumRequired
+        WalletObj --> UserObj: insufficientBalance
+        deactivate WalletObj
+        
+        UserObj --> App: balanceInsufficient
+        App --> User: promptAddMoney()
+    end
+    
+else status != AVAILABLE
+    Bike --> UserObj: vehicleUnavailable
+    UserObj --> App: vehicleNotAvailable
+    App --> User: displayErrorMessage()
 end
-deactivate TripMgr
+
+deactivate Bike
+deactivate UserObj
+deactivate App
+
 @enduml

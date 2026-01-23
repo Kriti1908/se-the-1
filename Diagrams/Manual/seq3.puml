@@ -1,46 +1,95 @@
-@startuml Scenario 3: Ending a Trip & Auto-Payment
+@startuml End_Trip_with_Payment
 actor User
 participant "App Interface" as App
-participant "ParkingSystem" as Park
-participant "TripManager" as TripMgr
-participant "RateCard" as Rates
-participant "WalletSystem" as Wallet
+participant ":Trip" as TripObj
+participant ":Vehicle" as Bike
+participant ":ParkingLot" as Parking
+participant ":RateCard" as Rates
+participant ":Wallet" as WalletObj
+participant ":Transaction" as TransObj
+participant ":Feedback" as FeedbackObj
 
-User -> App: Click "End Trip"
-App -> Park: validateLocation(gpsCoords)
-activate Park
+User -> App: requestEndTrip()
+activate App
+
+App -> TripObj: endTrip()
+activate TripObj
+
+TripObj -> Bike: getGPSLocation()
+activate Bike
+Bike --> TripObj: currentLocation
+deactivate Bike
+
+TripObj -> Parking: isBikeInside(gpsLocation)
+activate Parking
 
 alt Inside Parking Geofence
-    Park --> App: Location Valid
-    App -> TripMgr: endTrip(tripId)
-    activate TripMgr
+    Parking --> TripObj: locationValid
+    deactivate Parking
     
-    TripMgr -> TripMgr: stopTimer()
-    TripMgr -> Rates: computeFare(distance, duration)
+    TripObj -> TripObj: calculateDuration()
+    TripObj -> TripObj: calculateDistance()
+    
+    TripObj -> Rates: calculateFare(distance, duration)
     activate Rates
-    Rates -> Rates: Check > 8 hours (Fine Logic)
-    Rates --> TripMgr: Total Fare: 45 INR
+    
+    Rates -> Rates: applyBaseRate()
+    Rates -> Rates: applyDistanceRate()
+    Rates -> Rates: checkDailyFine()
+    Rates --> TripObj: totalFare
     deactivate Rates
-
-    TripMgr -> Wallet: processPayment(45, AutoDeduct=True)
-    activate Wallet
+    
+    TripObj -> WalletObj: deductMoney(totalFare)
+    activate WalletObj
     
     alt Sufficient Balance
-        Wallet -> Wallet: deduct(45)
-        Wallet --> TripMgr: Payment Successful
-        TripMgr -> Bike: commandLock()
-        TripMgr --> App: Trip Ended. Receipt Generated.
-        App --> User: Show Receipt & Rating Request
+        WalletObj -> WalletObj: updateBalance()
+        WalletObj -> TransObj: create(amount, timestamp)
+        activate TransObj
+        TransObj --> WalletObj: transactionRecorded
+        deactivate TransObj
+        
+        WalletObj --> TripObj: paymentSuccessful
+        deactivate WalletObj
+        
+        TripObj -> Bike: lock()
+        activate Bike
+        Bike -> Bike: updateStatus(AVAILABLE)
+        Bike --> TripObj: locked
+        deactivate Bike
+        
+        TripObj -> Parking: updateAvailability()
+        activate Parking
+        Parking --> TripObj: availabilityUpdated
+        deactivate Parking
+        
+        TripObj --> App: tripCompleted
+        App --> User: displayTripSummary()
+        
+        User -> App: submitRating()
+        App -> FeedbackObj: create(rating, comment)
+        activate FeedbackObj
+        FeedbackObj --> App: feedbackRecorded
+        deactivate FeedbackObj
+        
+        App --> User: displayThankYou()
+        
     else Insufficient Balance
-        Wallet --> TripMgr: Payment Failed
-        TripMgr --> App: Redirect to Payment Gateway
+        WalletObj --> TripObj: insufficientFunds
+        deactivate WalletObj
+        
+        TripObj --> App: paymentFailed
+        App --> User: redirectToPaymentGateway()
     end
-    deactivate Wallet
-    deactivate TripMgr
-
-else Outside Parking Zone
-    Park --> App: Location Invalid
-    App --> User: Error "Please park in designated zone"
+    
+else Outside Parking Fence 
+    Parking --> TripObj: locationInvalid
+    deactivate Parking
+    
+    TripObj --> App: invalidParkingLocation
+    App --> User: displayParkingError()
 end
-deactivate Park
+
+deactivate TripObj
+deactivate App
 @enduml

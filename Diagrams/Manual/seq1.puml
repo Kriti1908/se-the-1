@@ -1,27 +1,118 @@
-@startuml Scenario 1: User Adding Money to Wallet (Using UPI)
+@startuml User_Add_Money_to_Wallet
+
 actor User
 participant "App Interface" as App
-participant "Wallet" as Wallet
-participant "UPIPayment" as UPI
-participant "ExternalBank" as Bank
+participant ":User" as UserObj
+participant ":Wallet" as WalletObj
+participant ":PaymentMethod" as Payment
+participant ":UPIPayment" as UPI
+participant ":Transaction" as TransObj
 
-User -> App: Select "Add Money" (500 INR)
-App -> User: Prompt for Payment Method
-User -> App: Select UPI
-App -> UPI: create(upiId)
-activate UPI
+User -> App: selectAddMoney()
+activate App
 
-App -> Wallet: addMoney(500, upiPaymentInstance)
-activate Wallet
+App -> UserObj: initiateWalletRecharge()
+activate UserObj
 
-Wallet -> UPI: processPayment(500)
-UPI -> Bank: requestTransfer(500)
-Bank --> UPI: Success
-UPI --> Wallet: True (Success)
-deactivate UPI
+UserObj -> WalletObj: checkBalance()
+activate WalletObj
+WalletObj --> UserObj: currentBalance
+deactivate WalletObj
 
-Wallet -> Wallet: balance += 500
-Wallet --> App: Updated Balance
-deactivate Wallet
-App --> User: Show "Success"
+UserObj --> App: displayBalanceAndOptions()
+deactivate UserObj
+
+App --> User: promptPaymentMethod()
+
+User -> App: selectPaymentMethod()
+
+alt User chooses UPI
+    App -> UPI: create(upiId)
+    activate UPI
+    UPI --> App: upiPaymentInstance
+    
+    App -> WalletObj: addMoney(amount, upiPayment)
+    activate WalletObj
+    
+    WalletObj -> UPI: processPayment(amount)
+    UPI -> UPI: initiateTransaction()
+    UPI -> UPI: verifyWithBank()
+    UPI --> WalletObj: paymentSuccessful
+    deactivate UPI
+    
+    WalletObj -> WalletObj: updateBalance()
+    
+    WalletObj -> TransObj: create(amount, timestamp)
+    activate TransObj
+    TransObj --> WalletObj: transactionRecorded
+    deactivate TransObj
+    
+    WalletObj --> App: balanceUpdated
+    deactivate WalletObj
+    
+    App --> User: displaySuccessMessage()
+
+else User is Staff (Salary Deduction)
+    App -> Payment: create()
+    activate Payment
+    create participant ":SalaryDeduction" as Salary
+    Payment -> Salary: create(employeeId)
+    activate Salary
+    Salary --> App: salaryDeductionInstance
+    
+    App -> WalletObj: addMoney(amount, salaryDeduction)
+    activate WalletObj
+    
+    WalletObj -> Salary: processPayment(amount)
+    Salary -> Salary: verifyEmployeeAccount()
+    Salary -> Salary: scheduleDeduction()
+    Salary --> WalletObj: paymentScheduled
+    deactivate Salary
+    deactivate Payment
+    
+    WalletObj -> WalletObj: updateBalance()
+    
+    WalletObj -> TransObj: create(amount, timestamp)
+    activate TransObj
+    TransObj --> WalletObj: transactionRecorded
+    deactivate TransObj
+    
+    WalletObj --> App: balanceUpdated
+    deactivate WalletObj
+    
+    App --> User: displaySuccessMessage()
+
+else User is Student (Fee Addition)
+    App -> Payment: create()
+    activate Payment
+    create participant ":FeeAddition" as Fee
+    Payment -> Fee: create(studentRollNo)
+    activate Fee
+    Fee --> App: feeAdditionInstance
+    
+    App -> WalletObj: addMoney(amount, feeAddition)
+    activate WalletObj
+    
+    WalletObj -> Fee: processPayment(amount)
+    Fee -> Fee: verifyStudentAccount()
+    Fee -> Fee: addToFeeStructure()
+    Fee --> WalletObj: paymentScheduled
+    deactivate Fee
+    deactivate Payment
+    
+    WalletObj -> WalletObj: updateBalance()
+    
+    WalletObj -> TransObj: create(amount, timestamp)
+    activate TransObj
+    TransObj --> WalletObj: transactionRecorded
+    deactivate TransObj
+    
+    WalletObj --> App: balanceUpdated
+    deactivate WalletObj
+    
+    App --> User: displaySuccessMessage()
+end
+
+deactivate App
+
 @enduml
